@@ -22,6 +22,12 @@ func (s *Server) definition(ctx context.Context, params *protocol.DefinitionPara
 	if snapshot.View().FileKind(fh) == source.Tmpl {
 		return template.Definition(snapshot, fh, params.Position)
 	}
+
+	if pkgPath, name := source.ParseLinkname(ctx, snapshot, fh, params.Position); pkgPath != "" {
+		fmt.Printf("FOUND LINKNAME: %s -- %s\n", pkgPath, name)
+		return source.FindLinkname(ctx, snapshot, fh, params.Position, pkgPath, name)
+	}
+
 	ident, err := source.Identifier(ctx, snapshot, fh, params.Position)
 	if err != nil {
 		return nil, err

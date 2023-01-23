@@ -5,6 +5,7 @@
 package misc
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -45,6 +46,46 @@ func TestGoToInternalDefinition(t *testing.T) {
 			t.Errorf("GoToDefinition: got file %q, want %q", name, want)
 		}
 		if want := env.RegexpSearch("const.go", "message"); pos != want {
+			t.Errorf("GoToDefinition: got position %v, want %v", pos, want)
+		}
+	})
+}
+
+const linknameDefinition = `
+-- go.mod --
+module mod.com
+
+-- foo/foo.go --
+package foo
+
+import (
+	"fmt"
+	_ "unsafe"
+
+	"mod.com/bar"
+)
+
+//go:linkname foo mod.com/bar.bar_foo
+func foo() string
+
+-- bar/bar.go --
+package bar
+
+import _ "unsafe"
+
+func bar_foo() string {
+	return "defined"
+}`
+
+func TestGoToLinknameDefinition(t *testing.T) {
+	Run(t, linknameDefinition, func(t *testing.T, env *Env) {
+		env.OpenFile("./foo/foo.go")
+		name, pos := env.GoToDefinition("./foo/foo.go", env.RegexpSearch("./foo/foo.go", "foo"))
+		fmt.Printf("TEST GOT: %v %s\n", name, pos)
+		if want := "bar/bar.go"; name != want {
+			t.Errorf("GoToDefinition: got file %q, want %q", name, want)
+		}
+		if want := env.RegexpSearch("bar/bar.go", "bar_foo"); pos != want {
 			t.Errorf("GoToDefinition: got position %v, want %v", pos, want)
 		}
 	})
