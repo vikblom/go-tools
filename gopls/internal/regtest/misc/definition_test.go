@@ -55,37 +55,49 @@ const linknameDefinition = `
 -- go.mod --
 module mod.com
 
--- foo/foo.go --
-package foo
+-- upper/upper.go --
+package upper
 
 import (
 	"fmt"
 	_ "unsafe"
 
-	"mod.com/bar"
+	"mod.com/middle"
 )
 
-//go:linkname foo mod.com/bar.bar_foo
+//go:linkname foo mod.com/lower.bar
 func foo() string
 
--- bar/bar.go --
-package bar
+-- middle/middle.go --
+package middle
+
+import (
+    // Force the import.
+    _ "mod.com/lower"
+)
+
+-- lower/lower.go --
+package lower
 
 import _ "unsafe"
 
-func bar_foo() string {
-	return "defined"
+func bar() string {
+	return "bar as foo"
 }`
 
 func TestGoToLinknameDefinition(t *testing.T) {
 	Run(t, linknameDefinition, func(t *testing.T, env *Env) {
-		env.OpenFile("./foo/foo.go")
-		name, pos := env.GoToDefinition("./foo/foo.go", env.RegexpSearch("./foo/foo.go", "foo"))
+		env.OpenFile("./upper/upper.go")
+		start := env.RegexpSearch("upper/upper.go", `foo\(`) // find func, not directive
+		t.Logf("START: %v", start)
+
+		name, pos := env.GoToDefinition("./upper/upper.go", start)
 		fmt.Printf("TEST GOT: %v %s\n", name, pos)
-		if want := "bar/bar.go"; name != want {
+
+		if want := "lower/lower.go"; name != want {
 			t.Errorf("GoToDefinition: got file %q, want %q", name, want)
 		}
-		if want := env.RegexpSearch("bar/bar.go", "bar_foo"); pos != want {
+		if want := env.RegexpSearch("lower/lower.go", "bar"); pos != want {
 			t.Errorf("GoToDefinition: got position %v, want %v", pos, want)
 		}
 	})
